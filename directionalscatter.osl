@@ -1,139 +1,53 @@
 // modified version of RandomBitmap.osl shader by Zap Andersson
+// allows setting a discretized angle per-stroke
 
-
-color TextureFetch(string filename, point lp, output float a)
-{
+color TextureFetch(string filename, point lp, output float a) {
   color rgb = texture(filename, lp[0], 1.0-lp[1], "alpha", a, "wrap", "clamp");
-
   int channels = 3;
   gettextureinfo(filename, "channels", channels);
-  if (channels <= 3)  // If there is no alpha...
-    a = 1.0;        // ...use 1.0
-    
+  if (channels <= 3) a = 1.0;
   return rgb;
 }
 
-shader RandomBitmaps
-[[ string help  = "Randomly place (and alpha blend) a set of bitmaps on top of something else",
-  string label = "Randomized Bitmaps" ]]
-(
+
+shader RandomBitmaps [[ string help  = "Randomly place (and alpha blend) a set of bitmaps on top of something else", string label = "Randomized Bitmaps" ]] (
   vector uv = vector(u,v,0),
   float angle = 0.0,
-  color  Input = 0.0
-    [[ string help="The input color on top of which everything else is put. Thia allows cascading multiple RandomBitmap on top of each other easily..." ]], 	
-  float  InputAlpha = 1.0
-    [[ string help="The input alpha on top of which everything else is put. Thia allows cascading multiple RandomBitmap on top of each other easily..." ]], 	
-  int    NumFiles = 1
-    [[ string label = "Number of Files",
-      int min = 1, int max = 10 ]],
-  string Filename0 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 0",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename1 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 1",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename2 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 2",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename3 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 3",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename4 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 4",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename5 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 5",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename6 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 6",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename7 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 7",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename8 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 8",
-        string help="The name of the bitmap to place randomly" ]], 
-  string Filename9 = "uv-grid.png" 
-      [[ string widget="filename", 
-        string label="File name 9",
-        string help="The name of the bitmap to place randomly" ]], 
-  int    Seed  = 39
-    [[ string help="The random seed" ]], 
-  vector Probability = vector(1.0, 0.0, 0.1)
-    [[ string help="Three values: The probability a bitmap will show up, the randomness of the variation in the probability, and the scale of said randomness",
-      float min = 0.0,
-      float max = 1.0 ]], 
-  vector PosRandom = vector(0.0,0.0,0.0)		
-    [[ string help="Position randomness. For large numbers you may have to turn Overlap up, but impacts performance! Note: the Z value is not used." ]], 
-  vector ScaleMin = vector(1.0, 1.0, 0.0)
-    [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used." ,
-      float min = 0.0,
-      float max = 10.0 ]], 
-  vector ScaleMax = vector(1.0, 1.0, 0.0)
-    [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used." ,
-      float min = 0.0,
-      float max = 10.0 ]], 	
-  int    UniformScale = 1 
-    [[ string widget="checkBox",
-      string help="If enabled, U and V scales in sync with each other, if off, they scale independently" ]], 	
-  float  PixelScale = 0.0
-    [[ string help="Relates pixels to image size.<ul><li>If zero, each image is considered to be a 1.0 x 1.0 square in UV space.<li>If nonzero, maps that many pixels to a the size of 1.0, so that images are the same size w.r.t. to pixels <i>and</i> retains their aspect ratio.<br/><b>NOTE</b>: Sizes ending up larger than 1.0 will require turning up Overlap, which reduces performance!</li></ul>" ]],
-  float  RotMin   = 0.0
-    [[ string help="The Rotational randomness." ,
-      float min = -360.0,
-      float max =  360.0 ]],
-  float  RotMax   = 0.0
-    [[ string help="The Rotational randomness." ,
-      float min = -360.0,
-      float max =  360.0 ]],	
-  int    RotSteps = 1
-    [[ string help="Number of 'steps' of Rotational randomness. 1 means 'no steps'.<br><br>For example, to rotate something only 0, 90, 180 and 270 degrees, set min rotation to 0, max rotation to 270, and RotSteps to 4." ,
-      int min = 1,
-      int max = 360 ]],	
-  vector HSVMin   = vector(0.0, 1.0, 1.0)
-    [[ string help="Hue/Saturation/Value randomness. Start range of hue shift and saturation/value scaling" ,
-      float min = -2.0,
-      float max =  2.0 ]],	
-  vector HSVMax   = vector(0.0, 1.0, 1.0)
-    [[ string help="Hue/Saturation/Value randomness. End range of hue shift and saturation/value scaling" ,
-      float min = -2.0,
-      float max =  2.0 ]],		
-  float  AlphaMin   = 1.0
-    [[ string help="The Alpha randomness. Minimum multiplier of alpha." ,
-      float min =  0.0,
-      float max =  1.0 ]],	
-  float  AlphaMax   = 1.0
-    [[ string help="The Alpha randomness. Maximum multiplier of alpha." ,
-      float min =  0.0,
-      float max =  1.0 ]],			
-  float  GammaMin   = 0.0
-    [[ string help="The Gamma randomness. Minimum offset of gamma value." ,
-      float min =  -5.0,
-      float max =   5.0 ]],	
-  float  GammaMax   = 0.0
-    [[ string help="The Gamma randomness. Maximum offset of gamma value." ,
-      float min =  -5.0,
-      float max =   5.0 ]], 			
-  int    Clamp    = 1 
-    [[ string widget = "checkBox",
-      string help = "Large color tweaks can yield colors outside of the 0-1 range. It's a good idea to clamp those colors to the 0-1 range..." ]],
-  int    AutoGamma   = 1   
-    [[ string widget="checkBox" ]],
-  float  ManualGamma = 1.0 
-    [[ string label="Manual Gamma" ]],	
-  int    OverLap  = 1
-    [[ string help="For very large scales or position shifts, you may see cut-off textures. This means the shader may need to look further into more neighbouring cells. Increasing this reduces performance A LOT so ONLY do this if absolutely necessary!",
-      int min=0, int max=5 ]],
-  float freq = 0.0,
+  color  Input = 0.0 [[ string help="The input color on top of which everything else is put. Thia allows cascading multiple RandomBitmap on top of each other easily..." ]], 	
+  float  InputAlpha = 1.0 [[ string help="The input alpha on top of which everything else is put. Thia allows cascading multiple RandomBitmap on top of each other easily..." ]], 	
+  int    NumFiles = 1 [[ string label = "Number of Files", int min = 1, int max = 10 ]],
+  string Filename0 = "uv-grid.png" [[ string label="File name 0", string help="The name of the bitmap to place randomly" ]], 
+  string Filename1 = "uv-grid.png" [[ string label="File name 1", string help="The name of the bitmap to place randomly" ]], 
+  string Filename2 = "uv-grid.png" [[ string label="File name 2", string help="The name of the bitmap to place randomly" ]], 
+  string Filename3 = "uv-grid.png" [[ string label="File name 3", string help="The name of the bitmap to place randomly" ]], 
+  string Filename4 = "uv-grid.png" [[ string label="File name 4", string help="The name of the bitmap to place randomly" ]], 
+  string Filename5 = "uv-grid.png" [[ string label="File name 5", string help="The name of the bitmap to place randomly" ]], 
+  string Filename6 = "uv-grid.png" [[ string label="File name 6", string help="The name of the bitmap to place randomly" ]], 
+  string Filename7 = "uv-grid.png" [[ string label="File name 7", string help="The name of the bitmap to place randomly" ]], 
+  string Filename8 = "uv-grid.png" [[ string label="File name 8", string help="The name of the bitmap to place randomly" ]], 
+  string Filename9 = "uv-grid.png" [[ string label="File name 9", string help="The name of the bitmap to place randomly" ]], 
+  string angle_texture = "",
+  int    Seed  = 39 [[ string help="The random seed" ]], 
+  vector Probability = vector(1.0, 0.0, 0.1) [[ string help="Three values: The probability a bitmap will show up, the randomness of the variation in the probability, and the scale of said randomness", float min = 0.0, float max = 1.0 ]], 
+  vector PosRandom = vector(0.0,0.0,0.0) [[ string help="Position randomness. For large numbers you may have to turn Overlap up, but impacts performance! Note: the Z value is not used." ]], 
+  vector ScaleMin = vector(1.0, 1.0, 0.0) [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 
+  vector ScaleMax = vector(1.0, 1.0, 0.0) [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 	
+  int    UniformScale = 1 [[ string help="If enabled, U and V scales in sync with each other, if off, they scale independently" ]], 	
+  float  PixelScale = 0.0 [[ string help="Relates pixels to image size.<ul><li>If zero, each image is considered to be a 1.0 x 1.0 square in UV space.<li>If nonzero, maps that many pixels to a the size of 1.0, so that images are the same size w.r.t. to pixels <i>and</i> retains their aspect ratio.<br/><b>NOTE</b>: Sizes ending up larger than 1.0 will require turning up Overlap, which reduces performance!</li></ul>" ]],
+  float  RotMin   = 0.0 [[ string help="The Rotational randomness." , float min = -360.0, float max =  360.0 ]],
+  float  RotMax   = 0.0 [[ string help="The Rotational randomness." , float min = -360.0, float max =  360.0 ]],	
+  int    RotSteps = 1 [[ string help="Number of 'steps' of Rotational randomness. 1 means 'no steps'.<br><br>For example, to rotate something only 0, 90, 180 and 270 degrees, set min rotation to 0, max rotation to 270, and RotSteps to 4." , int min = 1, int max = 360 ]],	
+  vector HSVMin   = vector(0.0, 1.0, 1.0) [[ string help="Hue/Saturation/Value randomness. Start range of hue shift and saturation/value scaling", float min = -2.0, float max =  2.0 ]],	
+  vector HSVMax   = vector(0.0, 1.0, 1.0) [[ string help="Hue/Saturation/Value randomness. End range of hue shift and saturation/value scaling", float min = -2.0, float max =  2.0 ]],		
+  float  AlphaMin  = 1.0 [[ string help="The Alpha randomness. Minimum multiplier of alpha." , float min =  0.0, float max =  1.0 ]],	
+  float  AlphaMax  = 1.0 [[ string help="The Alpha randomness. Maximum multiplier of alpha." , float min =  0.0, float max =  1.0 ]],			
+  float  GammaMin  = 0.0 [[ string help="The Gamma randomness. Minimum offset of gamma value.", float min =  -5.0, float max =   5.0 ]],	
+  float  GammaMax  = 0.0 [[ string help="The Gamma randomness. Maximum offset of gamma value.", float min =  -5.0, float max =   5.0 ]], 			
+  int    Clamp = 1 [[ string help = "Large color tweaks can yield colors outside of the 0-1 range. It's a good idea to clamp those colors to the 0-1 range..." ]],
+  int    AutoGamma = 1 [[ string widget="checkBox" ]],
+  float  ManualGamma = 1.0 [[ string label="Manual Gamma" ]],	
+  int    OverLap  = 1 [[ string help="For very large scales or position shifts, you may see cut-off textures. This means the shader may need to look further into more neighbouring cells. Increasing this reduces performance A LOT so ONLY do this if absolutely necessary!", int min=0, int max=5 ]],
+  float  freq = 0.0,
 
   output color Out = 0.0,
   output float Alpha = 1.0,
@@ -158,17 +72,15 @@ shader RandomBitmaps
   // Temporary workaround for color space issues
   if (AutoGamma) {
     if (!endswith(Filename0, ".exr") &&
-      !endswith(Filename0, ".EXR") &&
-      !endswith(Filename0, ".hdr") &&
-      !endswith(Filename0, ".HDR") &&
-      !endswith(Filename0, ".tx")  &&
-      !endswith(Filename0, ".TX"))
+        !endswith(Filename0, ".EXR") &&
+        !endswith(Filename0, ".hdr") &&
+        !endswith(Filename0, ".HDR") &&
+        !endswith(Filename0, ".tx")  &&
+        !endswith(Filename0, ".TX"))
     {
-      // Gamma 2.2 for sRGB approx)
-      gamma = 2.2;
+      gamma = 2.2; //srgb approx
     }
-  }
-  else {
+  } else {
     gamma = ManualGamma;
   }
 
@@ -178,8 +90,8 @@ shader RandomBitmaps
   
   for (int xx = -OverLap; xx <= OverLap; xx++) {
     for(int yy = -OverLap; yy <= OverLap; yy++) {
-      // The point used for all the randomness
-      point rndpoint = point(ix + xx, iy + yy, Seed);
+      
+      point rndpoint = point(ix + xx, iy + yy, Seed); // The point used for all the randomness
 
       // Compensate for old cellnoise behaviour			
       if (oslversion >= 11000) {
@@ -190,20 +102,15 @@ shader RandomBitmaps
       
       // Random pos data
       point pos = ((noise("cell", rndpoint, 0) - vector(0.5,0.5,0.0)) * vector(PosRandom[0], PosRandom[1], 1.0));
-      
-      // The actual lookup point
-      point lp  = point(fx-xx, fy-yy, 0) - pos;
-      
+      point lp  = point(fx-xx, fy-yy, 0) - pos; // The actual lookup point
       float prob = Probability[0] + noise("perlin", rndpoint * Probability[2]) * Probability[1];
       
-
       if (pos[2] < prob) {
         // Scale and rotation randomness
         point  scr = noise("cell", rndpoint, 1);
         int    pic = int((float)noise("cell", rndpoint, 15) * 100) % NumFiles;
-        
-        // XY scaling tweak
-        float sx = 1.0, sy = 1.0;
+
+        float sx = 1.0, sy = 1.0; // XY scaling tweak
         
         if (PixelScale > 0.0) {
           int res[2];
@@ -226,13 +133,11 @@ shader RandomBitmaps
         float scaleX = sx * mix(ScaleMin[0], ScaleMax[0], scr[0]);
         float scaleY = sy * mix(ScaleMin[1], ScaleMax[1], scr[UniformScale?0:1]);
         
-        if (RotSteps > 1)
-        {
+        if (RotSteps > 1) {
           scr[2] = floor(scr[2] * RotSteps) / (RotSteps - 1);
         }
   
-        float angle_quantized = texture("/depts/rnd/dev/zenop/vectorfield/pPlaneShape1.exr", rndpoint[0]/freq, 1.0 - rndpoint[1]/freq);
-        float rot = angle_quantized; //mix(RotMin, RotMax, scr[2]);
+        float rot = texture(angle_texture, rndpoint[0]/freq, 1.0 - rndpoint[1]/freq); //mix(RotMin, RotMax, scr[2]);
         
         lp -= 0.5;
         lp  = rotate(lp, radians(rot), point(0,0,0), vector(0,0,1));
@@ -256,20 +161,17 @@ shader RandomBitmaps
           else if (pic == 8) rgb = TextureFetch(Filename8, lp, a); 
           else if (pic == 9) rgb = TextureFetch(Filename9, lp, a); 
           
-          if (a > 0.0)
-          {
-            // Color randomness
-            point clr = noise("cell", rndpoint, 2);
-            // Alpha and Gamma randomness
-            point arr = noise("cell", rndpoint, 3);
-          
-            float gr  = mix(GammaMin, GammaMax, arr[1]);					
+          if (a > 0.0) {
+            point clr = noise("cell", rndpoint, 2); // Color randomness
+            point arr = noise("cell", rndpoint, 3); // Alpha and Gamma randomness
+            float gr  = mix(GammaMin, GammaMax, arr[1]);
             
-            if (gamma + gr != 1.0)
-              rgb = pow(rgb, gamma + gr);				
+            if (gamma + gr != 1.0) {
+              rgb = pow(rgb, gamma + gr);
+            }
             
             vector hsvTweak = mix(HSVMin, HSVMax, clr);
-            float       ar  = mix(AlphaMin, AlphaMax, arr[0]);
+            float  ar  = mix(AlphaMin, AlphaMax, arr[0]);
             
             color hsv = transformc("rgb", "hsv", rgb);
             hsv[0] += hsvTweak[0]; // Offset the hue
@@ -280,8 +182,9 @@ shader RandomBitmaps
             // Apply alpha randomness
             rgb *= ar; a *= ar;
             
-            if (Clamp)
+            if (Clamp) {
               rgb = clamp(rgb, 0.0, 1.0);
+            }
           }
           Alpha = 1.0 - ((1.0-Alpha)*(1.0-a));
           Out = Out * (1.0-a) + rgb;
