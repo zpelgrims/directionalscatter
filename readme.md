@@ -9,7 +9,11 @@ To do the quantization of the texture, we need to bake out some maps:
 
 
 // would be way better if i can remove the baking steps:
+
 // look into:
+
 //  https://github.com/mmp/pbrt-v3/blob/7095acfd8331cdefb03fe0bcae32c2fc9bd95980/src/core/texture.cpp#L93
+
 //  https://graphics.stanford.edu/papers/trd/trd_jpg.pdf
+
 //  https://computergraphics.stackexchange.com/questions/5939/ray-tracing-partial-derivatives-for-texture-lookup
