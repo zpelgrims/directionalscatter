@@ -10,7 +10,45 @@ color TextureFetch(string filename, point lp, output float a) {
 }
 
 
-shader RandomBitmaps [[ string help  = "Randomly place (and alpha blend) a set of bitmaps on top of something else", string label = "Randomized Bitmaps" ]] (
+#define MAX_BLUR_ITERATIONS  10
+#define MAX_BLUR_KERNEL_SIZE 11 // MAX_BLUR_ITERATIONS + 1
+vector gaussianblur(string in, int blur_iterations, float blur_stepSize, float s, float t) {
+    vector result = vector(0);
+
+    if (blur_iterations == 0) {
+        // just return the input with the right UV mapping
+        return texture(in, s, t);
+    } else {
+        float kernel[MAX_BLUR_KERNEL_SIZE];
+        
+        // initialize the kernel
+        float normFactor = 0;
+        for (int i = 0; i <= blur_iterations; ++i) {
+            // use normal probability density function with sigma = 7
+            float n  = 0.05699175 * exp(-0.01020408 * i * i);
+            normFactor += i == 0 ? n : 2*n;
+            kernel[i] = n;
+        }
+
+        // average the neighbours
+        color c  = 0;
+        for (int i = -blur_iterations; i <= blur_iterations; ++i) {
+            float n = kernel[blur_iterations - abs(i)];
+            for (int j = -blur_iterations; j <= blur_iterations; ++j) {
+                float f = n * kernel[blur_iterations - abs(j)];
+                c += f * texture(in, s + i * blur_stepSize, t + j * blur_stepSize);
+            }
+        }
+                
+        // calculate the final value
+        result = c/(normFactor*normFactor);
+    }
+
+    return result;
+}
+
+
+shader directional_scatter [[ string help  = "Randomly place (and alpha blend) a set of bitmaps on top of something else", string label = "Randomized Bitmaps" ]] (
   vector uv = vector(u,v,0),
   float angle = 0.0,
   color  Input = 0.0 [[ string help="The input color on top of which everything else is put. Thia allows cascading multiple RandomBitmap on top of each other easily..." ]], 	
@@ -30,14 +68,14 @@ shader RandomBitmaps [[ string help  = "Randomly place (and alpha blend) a set o
   int    Seed  = 39 [[ string help="The random seed" ]], 
   vector Probability = vector(1.0, 0.0, 0.1) [[ string help="Three values: The probability a bitmap will show up, the randomness of the variation in the probability, and the scale of said randomness", float min = 0.0, float max = 1.0 ]], 
   vector PosRandom = vector(0.0,0.0,0.0) [[ string help="Position randomness. For large numbers you may have to turn Overlap up, but impacts performance! Note: the Z value is not used." ]], 
-  vector ScaleMin = vector(1.0, 1.0, 0.0) [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 
-  vector ScaleMax = vector(1.0, 1.0, 0.0) [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 	
+  vector ScaleMin = vector(2.0, 0.5, 0.0) [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 
+  vector ScaleMax = vector(2.0, 0.5, 0.0) [[ string help="The scale randomness. For large scales you may have to turn Overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 	
   int    UniformScale = 1 [[ string help="If enabled, U and V scales in sync with each other, if off, they scale independently" ]], 	
   float  PixelScale = 0.0 [[ string help="Relates pixels to image size.<ul><li>If zero, each image is considered to be a 1.0 x 1.0 square in UV space.<li>If nonzero, maps that many pixels to a the size of 1.0, so that images are the same size w.r.t. to pixels <i>and</i> retains their aspect ratio.<br/><b>NOTE</b>: Sizes ending up larger than 1.0 will require turning up Overlap, which reduces performance!</li></ul>" ]],
   float  RotMin   = 0.0 [[ string help="The Rotational randomness." , float min = -360.0, float max =  360.0 ]],
   float  RotMax   = 0.0 [[ string help="The Rotational randomness." , float min = -360.0, float max =  360.0 ]],	
   int    RotSteps = 1 [[ string help="Number of 'steps' of Rotational randomness. 1 means 'no steps'.<br><br>For example, to rotate something only 0, 90, 180 and 270 degrees, set min rotation to 0, max rotation to 270, and RotSteps to 4." , int min = 1, int max = 360 ]],	
-  vector HSVMin   = vector(0.0, 1.0, 1.0) [[ string help="Hue/Saturation/Value randomness. Start range of hue shift and saturation/value scaling", float min = -2.0, float max =  2.0 ]],	
+  vector HSVMin   = vector(0.0, 1.0, 0.0) [[ string help="Hue/Saturation/Value randomness. Start range of hue shift and saturation/value scaling", float min = -2.0, float max =  2.0 ]],	
   vector HSVMax   = vector(0.0, 1.0, 1.0) [[ string help="Hue/Saturation/Value randomness. End range of hue shift and saturation/value scaling", float min = -2.0, float max =  2.0 ]],		
   float  AlphaMin  = 1.0 [[ string help="The Alpha randomness. Minimum multiplier of alpha." , float min =  0.0, float max =  1.0 ]],	
   float  AlphaMax  = 1.0 [[ string help="The Alpha randomness. Maximum multiplier of alpha." , float min =  0.0, float max =  1.0 ]],			
@@ -46,8 +84,11 @@ shader RandomBitmaps [[ string help  = "Randomly place (and alpha blend) a set o
   int    Clamp = 1 [[ string help = "Large color tweaks can yield colors outside of the 0-1 range. It's a good idea to clamp those colors to the 0-1 range..." ]],
   int    AutoGamma = 1 [[ string widget="checkBox" ]],
   float  ManualGamma = 1.0 [[ string label="Manual Gamma" ]],	
-  int    OverLap  = 1 [[ string help="For very large scales or position shifts, you may see cut-off textures. This means the shader may need to look further into more neighbouring cells. Increasing this reduces performance A LOT so ONLY do this if absolutely necessary!", int min=0, int max=5 ]],
-  float  freq = 0.0,
+  int    OverLap  = 2 [[ string help="For very large scales or position shifts, you may see cut-off textures. This means the shader may need to look further into more neighbouring cells. Increasing this reduces performance A LOT so ONLY do this if absolutely necessary!", int min=0, int max=5 ]],
+  float  freq = 100.0,
+  int blur_in_shader = 0,
+  float extra_rotation = 90.0,
+  float magnitude_scale = 30.0,
 
   output color Out = 0.0,
   output float Alpha = 1.0,
@@ -115,7 +156,7 @@ shader RandomBitmaps [[ string help  = "Randomly place (and alpha blend) a set o
         if (PixelScale > 0.0) {
           int res[2];
           
-          if (pic == 0) gettextureinfo(Filename0, "resolution", res); 
+          if (pic == 0) gettextureinfo("C:/ZENO_2019/projects/vectorfield/brush01.png", "resolution", res); 
           else if (pic == 1) gettextureinfo(Filename1, "resolution", res); 
           else if (pic == 2) gettextureinfo(Filename2, "resolution", res); 
           else if (pic == 3) gettextureinfo(Filename3, "resolution", res); 				
@@ -136,11 +177,26 @@ shader RandomBitmaps [[ string help  = "Randomly place (and alpha blend) a set o
         if (RotSteps > 1) {
           scr[2] = floor(scr[2] * RotSteps) / (RotSteps - 1);
         }
-  
-        float rot = texture(angle_texture, rndpoint[0]/freq, 1.0 - rndpoint[1]/freq); //mix(RotMin, RotMax, scr[2]);
-        
+
+
+        string str_gradientfields = "C:/ZENO_2019/projects/vectorfield/derivates/gutenberg_objShape.exr";
+        string str_gradientfields_blurred = "C:/ZENO_2019/projects/vectorfield/derivates/gutenberg_objShape_blurred.exr";
+        color gradient_smoothed = color(0);
+        if (blur_in_shader) {
+            gradient_smoothed = gaussianblur(str_gradientfields, 5, 0.001,  rndpoint[0]/freq, 1.0 - rndpoint[1]/freq);
+        } else {
+            gradient_smoothed = texture(str_gradientfields_blurred, rndpoint[0]/freq, 1.0 - rndpoint[1]/freq); //mix(RotMin, RotMax, scr[2]);
+        }
+
+        gradient_smoothed = (gradient_smoothed - 0.5) * 2;
+        gradient_smoothed /= 15.36;
+
+        float angle_deg = degrees(atan2(gradient_smoothed[1], gradient_smoothed[0]));
+        float magnitude = hypot(gradient_smoothed[1], gradient_smoothed[0]);
+        scaleX = scaleX + scaleX * sqrt(magnitude)*magnitude_scale;
+
         lp -= 0.5;
-        lp  = rotate(lp, radians(rot), point(0,0,0), vector(0,0,1));
+        lp  = rotate(lp, radians(angle_deg+extra_rotation), point(0,0,0), vector(0,0,1));
         lp /= vector(scaleX, scaleY, 1.0);
         lp += 0.5;
                 
@@ -150,7 +206,7 @@ shader RandomBitmaps [[ string help  = "Randomly place (and alpha blend) a set o
           color rgb;
           float a = 1.0;
           
-          if (pic == 0) rgb = TextureFetch(Filename0, lp, a); 
+          if (pic == 0) rgb = TextureFetch("C:/ZENO_2019/projects/vectorfield/brush01.png", lp, a); 
           else if (pic == 1) rgb = TextureFetch(Filename1, lp, a); 
           else if (pic == 2) rgb = TextureFetch(Filename2, lp, a); 
           else if (pic == 3) rgb = TextureFetch(Filename3, lp, a); 			

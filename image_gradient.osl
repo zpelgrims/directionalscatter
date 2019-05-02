@@ -1,0 +1,22 @@
+shader image_gradient(
+    float derivate_shift = 0.1,
+    output vector result = vector(0)
+) {
+    float v_correct = 1.0-v;
+    string input_tex = "C:/ZENO_2019/projects/vectorfield/curvatures/gutenberg_objShape.exr";
+    int texture_res = 2048;
+    // gettextureinfo(input_tex, "resolution", texture_res);
+    // if (texture_res == 0) {
+    //     return;
+    // }
+
+    float derivate_distance = 1.0/float(texture_res) * derivate_shift;
+    float x = texture(input_tex, u, v_correct);
+    float y = texture(input_tex, u, v_correct);
+    float x_deriv = texture(input_tex, u+derivate_distance, v_correct);
+    float y_deriv = texture(input_tex, u, v_correct+derivate_distance);
+
+    float x_diff = 1.0 - (x - x_deriv + 0.5);
+    float y_diff = 1.0 - (y - y_deriv + 0.5);
+    result = vector(x_diff, y_diff, 0.0);
+}
