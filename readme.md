@@ -1,3 +1,6 @@
+![](https://github.com/zpelgrims/directionalscatter/blob/master/wip_001.png?raw=true)
+![](https://github.com/zpelgrims/directionalscatter/blob/master/wip_001_expl.jpg?raw=true)
+
 To do the quantization of the texture, we need to bake out some maps:
 
 1. Create b/w map where you want the strokes to have a directional aspect. E.g: bake out curvature map
