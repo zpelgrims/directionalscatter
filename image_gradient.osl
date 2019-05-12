@@ -1,3 +1,5 @@
+// for all information on this shader: http://zenopelgrims.com/directional-image-scattering/
+
 shader image_gradient(
     string input = "",
     float derivate_shift = 10.0,
