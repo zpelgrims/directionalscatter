@@ -1,4 +1,4 @@
-  // modified version of RandomBitmap.osl shader by Zap Andersson which allows setting a discretized angle per-stroke
+  // modified version of RandomBitmap.osl shader by Zap Andersson, adding the ability of setting a discretized angle per-stroke based on the image gradients
   // for all information on this shader: http://zenopelgrims.com/directional-image-scattering/
 
   color TextureFetch(string filename, point lp, output float a) {
