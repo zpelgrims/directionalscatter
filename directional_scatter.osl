@@ -22,20 +22,20 @@
     string filename3 = "" [[ string label="File name 3", string help="The name of the bitmap to place randomly" ]], 
     string filename4 = "" [[ string label="File name 4", string help="The name of the bitmap to place randomly" ]], 
     string filename5 = "" [[ string label="File name 5", string help="The name of the bitmap to place randomly" ]],
-    string input_image_gradient = "";
+    string input_image_gradient = "",
     
     int    seed = 1 [[ string help="The random seed" ]], 
     vector probability = vector(1.0, 0.0, 0.1) [[ string help="Three values: The probability a bitmap will show up, the randomness of the variation in the probability, and the scale of said randomness", float min = 0.0, float max = 1.0 ]], 
     vector position_randomness = vector(0.0,0.0,0.0) [[ string help="Position randomness. For large numbers you may have to turn overlap up, but impacts performance! Note: the Z value is not used." ]], 
-    vector scale_min = vector(2.0, 0.5, 0.0) [[ string help="The scale randomness. For large scales you may have to turn overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 
-    vector scale_max = vector(2.0, 0.5, 0.0) [[ string help="The scale randomness. For large scales you may have to turn overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 	
+    vector scale_min = vector(0.5, 0.5, 0.0) [[ string help="The scale randomness. For large scales you may have to turn overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 
+    vector scale_max = vector(1.5, 1.5, 0.0) [[ string help="The scale randomness. For large scales you may have to turn overlap up, but impacts performance! Note: the Z value is not used.", float min = 0.0, float max = 10.0 ]], 	
     int    uniform_scale = 1 [[ string help="If enabled, U and V scales in sync with each other, if off, they scale independently" ]], 	
     vector hsv_min   = vector(0.0, 1.0, 0.0) [[ string help="Hue/Saturation/Value randomness. Start range of hue shift and saturation/value scaling", float min = -2.0, float max =  2.0 ]],	
     vector hsv_max   = vector(0.0, 1.0, 1.0) [[ string help="Hue/Saturation/Value randomness. End range of hue shift and saturation/value scaling", float min = -2.0, float max =  2.0 ]],		
     float  alpha_min  = 1.0 [[ string help="The Alpha randomness. Minimum multiplier of alpha." , float min =  0.0, float max =  1.0 ]],	
     float  alpha_max  = 1.0 [[ string help="The Alpha randomness. Maximum multiplier of alpha." , float min =  0.0, float max =  1.0 ]],			 			
     int    overlap  = 2 [[ string help="For very large scales or position shifts, you may see cut-off textures. This means the shader may need to look further into more neighbouring cells. Increasing this reduces performance A LOT so ONLY do this if absolutely necessary!", int min=0, int max=5 ]],
-    float  freq = 100.0,
+    float  frequency = 100.0,
     float  extra_rotation = 90.0,
     float  magnitude_scale = 30.0,
     float  minimum_magnitude = 4.5,
@@ -49,7 +49,7 @@
     int oslversion = 0;
     getattribute("osl:version", oslversion);
 
-    vector uvfreq = uv * freq;
+    vector uvfreq = uv * frequency;
     int ix = int(floor(uvfreq[0]));
     int iy = int(floor(uvfreq[1]));
     float fx = uvfreq[0] - ix;
@@ -91,8 +91,7 @@
           float scaleX = sx * mix(scale_min[0], scale_max[0], scr[0]);
           float scaleY = sy * mix(scale_min[1], scale_max[1], scr[uniform_scale?0:1]);
 
-          color gradient_smoothed = (texture(input_image_gradient, rndpoint[0]/freq, 1.0 - rndpoint[1]/freq) - 0.5) * 2.0;
-          gradient_smoothed /= 15.36;
+          color gradient_smoothed = ((texture(input_image_gradient, rndpoint[0]/frequency, 1.0 - rndpoint[1]/frequency) - 0.5) * 2.0) / 15.36;
           float angle_deg = degrees(atan2(gradient_smoothed[1], gradient_smoothed[0]));
           float magnitude = hypot(gradient_smoothed[1], gradient_smoothed[0]);
 
