@@ -6,10 +6,8 @@ shader image_gradient(
     output vector result = vector(0)
 ) {
     float v_correct = 1.0-v;
-    int resolution;
-    gettextureinfo(input, "resolution", resolution);
 
-    float derivate_distance = 1.0/float(resolution) * derivate_shift;
+    float derivate_distance = 0.001 * derivate_shift;
     float x = texture(input, u, v_correct);
     float y = texture(input, u, v_correct);
     float x_deriv = texture(input, u+derivate_distance, v_correct);
